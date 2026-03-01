@@ -1,0 +1,7 @@
+04400000  // PC=0x00: OP_READ_TID R1        (R1 <- host_thread_id)
+08800005  // PC=0x04: OP_LDI R2, 5          (R2 <- 5)
+40C48000  // PC=0x08: OP_ADD_I16 R3, R1, R2 (R3 <- R1 + R2)
+00000000  // PC=0x0C: NOP (Pipeline flush)
+00000000  // PC=0x10: NOP 
+00000000  // PC=0x14: NOP
+00000000  // PC=0x18: NOP
