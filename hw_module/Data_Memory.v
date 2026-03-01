@@ -12,7 +12,7 @@ module Data_Memory #(
     reg [63:0] ram [0:MEM_DEPTH-1];
 	
 	initial begin
-        $readmemh("C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hex_file/data_memory.hex", ram);
+        $readmemh("../hex_file/data_memory.hex", ram);
     end
 
     assign read_data = ram[addr[11:3]];

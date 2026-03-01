@@ -18,7 +18,7 @@ module Instruction_Memory #(
             rom[i] = 32'd0;
         end
 		
-		$readmemh("C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/kernel/gpu_program.hex", rom);
+		$readmemh("../hex_file/gpu_program.hex", rom);
     end
 
     // Fetch interface (Word-aligned addressing)
