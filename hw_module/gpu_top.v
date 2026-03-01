@@ -46,7 +46,8 @@ module gpu_top(
     // ==========================================
     // ID & RR Stage
     // ==========================================
-    wire [63:0] id_rs1_data, id_rs2_data;
+    wire [63:0] id_rs1_data, id_rs2_data, id_rs3_data; 
+    
     wire stall_decode;
     wire id_we_reg, id_we_mem, id_tensor_start;
     wire [3:0]  id_rs1_addr = id_instr[21:18];
@@ -56,25 +57,27 @@ module gpu_top(
 	
 	// pre-declare all feedback wires for control unit
 	wire flush_execute;
-	wire tensor_busy;    	   // From EX stage Tensor Unit
-    wire [3:0] ex_rd_addr;     // From EX stage
-    wire ex_we_reg;     	   // From EX stage
-    wire [3:0] mem_rd_addr;    // From MEM stage
-    wire mem_we_reg;     	   // From MEM stage
-    wire [3:0] wb_rd_addr;     // From WB stage
-    wire wb_we_reg;      	   // From WB stage
-    wire [63:0] wb_data;       // From WB stage
+	wire tensor_busy;
 	
-    Register_File rf_inst(
+    wire [3:0] ex_rd_addr;       // From EX stage
+    wire ex_we_reg;     	     // From EX stage
+    wire [3:0] mem_rd_addr;      // From MEM stage
+    wire mem_we_reg;     	     // From MEM stage
+    wire [3:0] wb_rd_addr;       // From WB stage
+    wire wb_we_reg;      	     // From WB stage
+    wire [63:0] wb_data;         // From WB stage
+	
+    Register_File rf_inst (
         .clk(clk),
-        .rst(rst),
         .we(wb_we_reg),
-        .rs1_addr(id_rs1_addr),
-        .rs2_addr(id_rs2_addr),
+        .rs1_addr(id_instr[21:18]),
+        .rs2_addr(id_instr[17:14]),
+        .rs3_addr(id_instr[13:10]), 
         .rd_addr(wb_rd_addr),
         .write_data(wb_data),
         .rs1_data(id_rs1_data),
-        .rs2_data(id_rs2_data)
+        .rs2_data(id_rs2_data),
+        .rs3_data(id_rs3_data) 
     );
 
     Control_Unit ctrl_inst(
@@ -98,13 +101,16 @@ module gpu_top(
     );
 
     // If reading thread ID, override rs1_data with host_thread_id
-    wire [63:0] id_fwd_rs1 = (id_instr[31:26] == `OP_READ_TID) ? {32'd0, host_thread_id} : id_rs1_data;
+    wire [63:0] id_fwd_rs1 = (id_instr[31:26] == `OP_READ_TID) ?
+                             {32'd0, host_thread_id} : id_rs1_data;
 
     // ==========================================
     // ID/EX Pipeline Register
     // ==========================================
     wire [31:0] ex_pc, ex_instr;
-    wire [63:0] ex_rs1_data, ex_rs2_data;
+    
+    wire [63:0] ex_rs1_data, ex_rs2_data, ex_rs3_data; 
+    
     wire [17:0] ex_imm;
     wire ex_we_mem, ex_tensor_start;
 
@@ -115,6 +121,15 @@ module gpu_top(
         .flush(flush_execute),
         .d({id_pc, id_instr, id_fwd_rs1, id_rs2_data, id_imm, id_rd_addr, id_we_reg, id_we_mem, id_tensor_start}),
         .q({ex_pc, ex_instr, ex_rs1_data, ex_rs2_data, ex_imm, ex_rd_addr, ex_we_reg, ex_we_mem, ex_tensor_start})
+    );
+
+    Pipeline_Reg #(64) id_ex_rs3_reg(
+        .clk(clk),
+        .rst(rst),
+        .stall(1'b0),
+        .flush(flush_execute),
+        .d(id_rs3_data),
+        .q(ex_rs3_data)
     );
 
     // ==========================================
@@ -138,6 +153,7 @@ module gpu_top(
         .start(ex_tensor_start),
         .rs1_data(ex_rs1_data),
         .rs2_data(ex_rs2_data),
+        .rs3_data(ex_rs3_data),
         .busy(tensor_busy),
         .done(tensor_done),
         .acc_out(ex_tensor_out)
@@ -148,6 +164,7 @@ module gpu_top(
     assign branch_target = ex_pc + {{14{ex_imm[17]}}, ex_imm}; // Sign extend 18-bit imm to 32-bit
 
     // Select EX stage result (ALU, Tensor, or calculate Memory Address)
+    // NOTE: Your multiplexer logic here is already perfectly correct!
     wire [63:0] ex_result = (ex_opcode == `OP_BF_MAC) ? ex_tensor_out : 
 							(ex_opcode == `OP_LD64 || ex_opcode == `OP_ST64) ? (ex_rs1_data + {{46{ex_imm[17]}}, ex_imm}) : 
 							(ex_opcode == `OP_LDI) ? {{46{ex_imm[17]}}, ex_imm} :

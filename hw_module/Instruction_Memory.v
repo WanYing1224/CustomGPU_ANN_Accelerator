@@ -7,11 +7,18 @@ module Instruction_Memory #(
 
     // Inferred BRAM
     reg [31:0] rom [0:MEM_DEPTH-1];
+	
+	integer i;
 
     // Initialize from the Python compiler's output
     initial 
 	begin
-        $readmemh("./hex_file/gpu_program.hex", rom);
+        for(i = 0; i < MEM_DEPTH; i = i + 1)
+		begin
+            rom[i] = 32'd0;
+        end
+		
+		$readmemh("C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/kernel/gpu_program.hex", rom);
     end
 
     // Fetch interface (Word-aligned addressing)
