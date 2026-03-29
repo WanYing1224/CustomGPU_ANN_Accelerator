@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nf:module xmlns:nf="http://www.NetFPGA.org/NF2_register_system" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.NetFPGA.org/NF2_register_system NF2_register_system.xsd ">
+  <nf:name>ids</nf:name>
+  <nf:prefix>gpu</nf:prefix>
+  <nf:location>udp</nf:location>
+  <nf:description>Registers for Custom GPU ANN Accelerator</nf:description>
+  <nf:blocksize>64</nf:blocksize>
+  <nf:registers>
+    <nf:register>
+      <nf:name>gpu_cmd</nf:name>
+      <nf:description>GPU Command Register (Bit 0 = Reset)</nf:description>
+      <nf:type>generic_software32</nf:type>
+    </nf:register>
+    <nf:register>
+      <nf:name>host_thread_id</nf:name>
+      <nf:description>Host Thread ID for GPU</nf:description>
+      <nf:type>generic_software32</nf:type>
+    </nf:register>
+    
+    <nf:register>
+      <nf:name>gpu_result_low</nf:name>
+      <nf:description>Lower 32 bits of GPU Result</nf:description>
+      <nf:type>generic_hardware32</nf:type>
+    </nf:register>
+    <nf:register>
+      <nf:name>gpu_result_high</nf:name>
+      <nf:description>Upper 32 bits of GPU Result</nf:description>
+      <nf:type>generic_hardware32</nf:type>
+    </nf:register>
+  </nf:registers>
+</nf:module>
