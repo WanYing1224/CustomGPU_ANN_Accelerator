@@ -12,7 +12,8 @@ module gpu_top_tb();
     gpu_top uut (
         .clk(clk),
         .rst(rst),
-        .host_thread_id(host_thread_id)
+        .host_thread_id(host_thread_id),
+		.gpu_result(gpu_result)
     );
 
     // Clock Generation (100MHz)
