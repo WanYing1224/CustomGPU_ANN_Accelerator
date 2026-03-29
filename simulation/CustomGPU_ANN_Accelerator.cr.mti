@@ -1,0 +1,78 @@
+{C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Register_File.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Register_File.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Register_File
+
+Top level modules:
+	Register_File
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Control_Unit.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Control_Unit.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Control_Unit
+
+Top level modules:
+	Control_Unit
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Tensor_Unit.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Tensor_Unit.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Tensor_Unit
+
+Top level modules:
+	Tensor_Unit
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Instruction_Memory.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Instruction_Memory.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Instruction_Memory
+
+Top level modules:
+	Instruction_Memory
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/gpu_top.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/gpu_top.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module gpu_top
+
+Top level modules:
+	gpu_top
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Data_Memory.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Data_Memory.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Data_Memory
+
+Top level modules:
+	Data_Memory
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/testbench/gpu_top_tb.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/testbench/gpu_top_tb.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module gpu_top_tb
+
+Top level modules:
+	gpu_top_tb
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Program_Counter.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Program_Counter.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Program_Counter
+
+Top level modules:
+	Program_Counter
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Pipeline_Reg.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Pipeline_Reg.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Pipeline_Reg
+
+Top level modules:
+	Pipeline_Reg
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Execution_Unit.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Execution_Unit.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module Execution_Unit
+
+Top level modules:
+	Execution_Unit
+
+} {} {}} {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/bf16_mac.v} {1 {vlog -work work -vopt -stats=none {C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/bf16_mac.v}
+Model Technology ModelSim SE-64 vlog 10.6e Compiler 2018.06 Jun 23 2018
+-- Compiling module bf16_mac
+
+Top level modules:
+	bf16_mac
+
+} {} {}}

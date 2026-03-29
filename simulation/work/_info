@@ -1,0 +1,238 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/simulation
+vbf16_mac
+Z1 VDg1SIo80bB@j0V0VzS_@n1
+r1
+!s85 0
+31
+!i10b 1
+!s100 m2V;XCmjceXS6g^@iz92Y2
+InA9HRLJL_N^44;<KoJ<el0
+R0
+w1772354798
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/bf16_mac.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/bf16_mac.v
+L0 1
+Z2 OL;L;10.6e;65
+Z3 !s108 1772520264.000000
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/bf16_mac.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/bf16_mac.v|
+!i113 0
+Z4 o-work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+Z5 tCvgOpt 0
+vControl_Unit
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 bL_DzETO]oURM;W9=g_Mf2
+IjRgOg>FYgRD[^Y5HUYN6B2
+R0
+w1772355571
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Control_Unit.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Control_Unit.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Control_Unit.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Control_Unit.v|
+!i113 0
+R4
+R5
+n@control_@unit
+vData_Memory
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 ;o=Ij0RZ6jl[Se3m;L2713
+I18]R]iDgM9P^VDI<1720`3
+R0
+w1772447824
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Data_Memory.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Data_Memory.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Data_Memory.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Data_Memory.v|
+!i113 0
+R4
+R5
+n@data_@memory
+vExecution_Unit
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 WBLeOf3OJJ_be@SVa5>>L3
+I>2[d7@`L=>Y5WLme_gk^^1
+R0
+w1772279386
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Execution_Unit.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Execution_Unit.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Execution_Unit.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Execution_Unit.v|
+!i113 0
+R4
+R5
+n@execution_@unit
+vgpu_top
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 NRnTP`>djDge>NWB^I8<h2
+I2D^]7Zij=ek@i[zSKdQJK0
+R0
+w1772353246
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/gpu_top.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/gpu_top.v
+L0 3
+R2
+R3
+!s107 C:\USC CE\EE533\Lab7\CustomGPU_ANN_Accelerator\hw_module\isa_defines.vh|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/gpu_top.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/gpu_top.v|
+!i113 0
+R4
+R5
+vgpu_top_tb
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 @IL9:DlQJMeY7hBR9cD>E3
+IWR7<KnZ8mShWeV6E=N5W83
+R0
+w1772520259
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/testbench/gpu_top_tb.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/testbench/gpu_top_tb.v
+L0 3
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/testbench/gpu_top_tb.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/testbench/gpu_top_tb.v|
+!i113 0
+R4
+R5
+vInstruction_Memory
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 PbIJ5fEIlhl]2[PeU@XU52
+I`8XF_L[GmLASFNbbc4RRP0
+R0
+w1772447820
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Instruction_Memory.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Instruction_Memory.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Instruction_Memory.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Instruction_Memory.v|
+!i113 0
+R4
+R5
+n@instruction_@memory
+vPipeline_Reg
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 Ea_RYD^FTo46EAPY=fZeg0
+I:IHdPj7U2[>lYe`MMXddf3
+R0
+w1772277488
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Pipeline_Reg.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Pipeline_Reg.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Pipeline_Reg.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Pipeline_Reg.v|
+!i113 0
+R4
+R5
+n@pipeline_@reg
+vProgram_Counter
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 h4l_[8>LzZFENR9z8eCV51
+Ie1A?nD<Tlemm34UbG`3c72
+R0
+w1772277228
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Program_Counter.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Program_Counter.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Program_Counter.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Program_Counter.v|
+!i113 0
+R4
+R5
+n@program_@counter
+vRegister_File
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 RFbo2J0niXO?Z7k4_3@2B0
+I6Y[ZIZICTW0W2M3b[nO@_2
+R0
+w1772354661
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Register_File.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Register_File.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Register_File.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Register_File.v|
+!i113 0
+R4
+R5
+n@register_@file
+vTensor_Unit
+R1
+r1
+!s85 0
+31
+!i10b 1
+!s100 K@jBgmH6?^_VI49mJ^MFM0
+IiNAD<cOOmf;z<SZe>ZaOi0
+R0
+w1772354779
+8C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Tensor_Unit.v
+FC:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Tensor_Unit.v
+L0 1
+R2
+R3
+!s107 C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Tensor_Unit.v|
+!s90 -reportprogress|300|-work|work|-vopt|-stats=none|C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/hw_module/Tensor_Unit.v|
+!i113 0
+R4
+R5
+n@tensor_@unit
