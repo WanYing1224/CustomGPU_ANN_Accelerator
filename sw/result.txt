@@ -1,0 +1,19 @@
+[team-0:fpga lab7] ./run_gpu.sh 
+======================================
+ Starting Custom GPU AI Accelerator 
+======================================
+[1/4] Putting GPU in Reset...
+Found net device: nf2c0
+GPU Reset set to: 1
+[2/4] Loading Thread ID: 0...
+Found net device: nf2c0
+GPU Host Thread ID set to: 0
+[3/4] Releasing Reset (Executing Program)...
+Found net device: nf2c0
+GPU Reset set to: 0
+[4/4] Fetching Final Result...
+Found net device: nf2c0
+Found net device: nf2c0
+--------------------------------------
+ SUCCESS: GPU Result: 0x0000000000000000
+======================================
