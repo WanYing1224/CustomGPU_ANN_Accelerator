@@ -1,99 +1,117 @@
 `include "isa_defines.vh"
 
 module gpu_top_design(
-    input wire clk,
-    input wire rst,
-    input wire [31:0] host_thread_id,
-	
-	output wire [63:0] gpu_result
+    input  wire        clk,
+    input  wire        rst,
+    input  wire [31:0] host_thread_id,
+
+    // ── PCI Programming Interface (from gpu_wrapper) ─────────────────────
+    // Identical pattern to the ARM CPU's prog_en/dmem_sel interface.
+    input  wire        prog_en,        // 1 = software owns memory buses
+    input  wire        dmem_sel,       // 1 = target DMEM,  0 = target IMEM
+    input  wire        prog_we,        // Write strobe
+    input  wire [31:0] prog_addr,      // Byte address
+    input  wire [31:0] prog_wdata_lo,  // Lower 32 bits (IMEM word or DMEM low)
+    input  wire [31:0] prog_wdata_hi,  // Upper 32 bits (DMEM high, ignored for IMEM)
+
+    // ── Debug / Done Outputs ─────────────────────────────────────────────
+    output wire [31:0] debug_pc,       // Current program counter (for done detection)
+    output wire        gpu_done,       // Registered: HIGH when PC >= PROG_END
+
+    // ── GPU Result ───────────────────────────────────────────────────────
+    output wire [63:0] gpu_result
 );
 
-    // ==========================================
+    // =========================================================================
+    // PROGRAMMING MODE SIGNALS
+    // imem_prog = prog_en AND NOT dmem_sel  → software writes IMEM
+    // dmem_prog = prog_en AND     dmem_sel  → software writes/reads DMEM
+    // =========================================================================
+    wire imem_prog = prog_en && !dmem_sel;
+    wire dmem_prog = prog_en &&  dmem_sel;
+
+    // =========================================================================
     // IF Stage
-    // ==========================================
+    // =========================================================================
     wire [31:0] if_pc, if_instr;
     wire [31:0] branch_target;
-    wire branch_taken;
-    wire stall_fetch;
+    wire        branch_taken;
+    wire        stall_fetch;
 
     Program_Counter pc_inst(
-        .clk(clk),
-        .rst(rst),
-        .stall_en(stall_fetch),
-        .branch_taken(branch_taken),
+        .clk          (clk),
+        .rst          (rst),
+        .stall_en     (stall_fetch),
+        .branch_taken (branch_taken),
         .branch_target(branch_target),
-        .pc(if_pc)
+        .pc           (if_pc)
     );
 
+    assign debug_pc = if_pc;
+
+    // ── IMEM: synchronous write for PCI loading, async read for zero-latency fetch
     Instruction_Memory imem_inst(
-        .pc(if_pc),
-        .instr(if_instr)
+        .clk       (clk),
+        .prog_mode (imem_prog),
+        .prog_we   (prog_we),
+        .prog_addr (prog_addr),
+        .prog_din  (prog_wdata_lo),  // IMEM words are 32-bit
+        .pc        (if_pc),
+        .instr     (if_instr)
     );
 
-    // ==========================================
+    // =========================================================================
     // IF/ID Pipeline Register
-    // ==========================================
-    wire flush_decode;
+    // =========================================================================
+    wire        flush_decode;
     wire [31:0] id_pc, id_instr;
 
     Pipeline_Reg #(64) if_id_reg(
-        .clk(clk),
-        .rst(rst),
-        .stall(stall_fetch), // Stall decode if fetch is stalled
+        .clk  (clk),
+        .rst  (rst),
+        .stall(stall_fetch),
         .flush(flush_decode),
-        .d({if_pc, if_instr}),
-        .q({id_pc, id_instr})
+        .d    ({if_pc, if_instr}),
+        .q    ({id_pc, id_instr})
     );
 
-    // ==========================================
+    // =========================================================================
     // ID & RR Stage
-    // ==========================================
-    wire [63:0] id_rs1_data, id_rs2_data, id_rs3_data; 
-    
-    wire stall_decode;
-    wire id_we_reg, id_we_mem, id_tensor_start;
-    wire [3:0]  id_rs1_addr = id_instr[21:18];
-    wire [3:0]  id_rs2_addr = id_instr[17:14];
-    wire [3:0]  id_rd_addr  = id_instr[25:22];
-    wire [17:0] id_imm      = id_instr[17:0]; // I-Type immediate
-	
-	// pre-declare all feedback wires for control unit
-	wire flush_execute;
-	wire tensor_busy;
-	
-    wire [3:0] ex_rd_addr;       // From EX stage
-    wire ex_we_reg;     	     // From EX stage
-    wire [3:0] mem_rd_addr;      // From MEM stage
-    wire mem_we_reg;     	     // From MEM stage
-    wire [3:0] wb_rd_addr;       // From WB stage
-    wire wb_we_reg;      	     // From WB stage
-    wire [63:0] wb_data;         // From WB stage
-	
+    // =========================================================================
+    wire [63:0] id_rs1_data, id_rs2_data, id_rs3_data;
+    wire        stall_decode;
+    wire        id_we_reg, id_we_mem, id_tensor_start;
+    wire [3:0]  id_rd_addr = id_instr[25:22];
+    wire [17:0] id_imm     = id_instr[17:0];
+
+    wire        flush_execute;
+    wire        tensor_busy;
+
+    wire [3:0]  ex_rd_addr,  mem_rd_addr,  wb_rd_addr;
+    wire        ex_we_reg,   mem_we_reg,   wb_we_reg;
+    wire [63:0] wb_data;
+
     Register_File rf_inst (
-        .clk(clk),
-        .we(wb_we_reg),
-        .rs1_addr(id_instr[21:18]),
-        .rs2_addr(id_instr[17:14]),
-        .rs3_addr(id_instr[13:10]), 
-        .rd_addr(wb_rd_addr),
+        .clk       (clk),
+        .we        (wb_we_reg),
+        .rs1_addr  (id_instr[21:18]),
+        .rs2_addr  (id_instr[17:14]),
+        .rs3_addr  (id_instr[13:10]),
+        .rd_addr   (wb_rd_addr),
         .write_data(wb_data),
-        .rs1_data(id_rs1_data),
-        .rs2_data(id_rs2_data),
-        .rs3_data(id_rs3_data) 
+        .rs1_data  (id_rs1_data),
+        .rs2_data  (id_rs2_data),
+        .rs3_data  (id_rs3_data)
     );
 
     Control_Unit ctrl_inst(
-        .instr_id(id_instr),
-        .tensor_busy(tensor_busy), // From EX stage Tensor Unit
-        .branch_eval(branch_taken),
-		
-        // Scoreboard inputs (simplification for wiring)
-        .rd_ex(ex_rd_addr), .we_ex(ex_we_reg),
-        .rd_mem(mem_rd_addr), .we_mem(mem_we_reg),
-        .rd_wb(wb_rd_addr), .we_wb(wb_we_reg),
-		
-        // Outputs
-        .stall_fetch(stall_fetch),
+        .instr_id    (id_instr),
+        .tensor_busy (tensor_busy),
+        .branch_eval (branch_taken),
+        .rd_ex       (ex_rd_addr),  .we_ex  (ex_we_reg),
+        .rd_mem      (mem_rd_addr), .we_mem (mem_we_reg),
+        .rd_wb       (wb_rd_addr),  .we_wb  (wb_we_reg),
+        .stall_fetch (stall_fetch),
         .stall_decode(stall_decode),
         .flush_decode(flush_decode),
         .flush_execute(flush_execute),
@@ -102,126 +120,142 @@ module gpu_top_design(
         .tensor_start(id_tensor_start)
     );
 
-    // If reading thread ID, override rs1_data with host_thread_id
+    // READ_TID override
     wire [63:0] id_fwd_rs1 = (id_instr[31:26] == `OP_READ_TID) ?
-                             {32'd0, host_thread_id} : id_rs1_data;
+                              {32'd0, host_thread_id} : id_rs1_data;
 
-    // ==========================================
+    // =========================================================================
     // ID/EX Pipeline Register
-    // ==========================================
+    // =========================================================================
     wire [31:0] ex_pc, ex_instr;
-    
-    wire [63:0] ex_rs1_data, ex_rs2_data, ex_rs3_data; 
-    
+    wire [63:0] ex_rs1_data, ex_rs2_data, ex_rs3_data;
     wire [17:0] ex_imm;
-    wire ex_we_mem, ex_tensor_start;
+    wire        ex_we_mem, ex_tensor_start;
 
     Pipeline_Reg #(217) id_ex_reg(
-        .clk(clk),
-        .rst(rst),
-        .stall(1'b0), // EX rarely stalls itself unless memory bottlenecks
+        .clk  (clk),
+        .rst  (rst),
+        .stall(1'b0),
         .flush(flush_execute),
-        .d({id_pc, id_instr, id_fwd_rs1, id_rs2_data, id_imm, id_rd_addr, id_we_reg, id_we_mem, id_tensor_start}),
-        .q({ex_pc, ex_instr, ex_rs1_data, ex_rs2_data, ex_imm, ex_rd_addr, ex_we_reg, ex_we_mem, ex_tensor_start})
+        .d    ({id_pc, id_instr, id_fwd_rs1, id_rs2_data, id_imm,
+                id_rd_addr, id_we_reg, id_we_mem, id_tensor_start}),
+        .q    ({ex_pc, ex_instr, ex_rs1_data, ex_rs2_data, ex_imm,
+                ex_rd_addr, ex_we_reg, ex_we_mem, ex_tensor_start})
     );
 
     Pipeline_Reg #(64) id_ex_rs3_reg(
-        .clk(clk),
-        .rst(rst),
+        .clk  (clk),
+        .rst  (rst),
         .stall(1'b0),
         .flush(flush_execute),
-        .d(id_rs3_data),
-        .q(ex_rs3_data)
+        .d    (id_rs3_data),
+        .q    (ex_rs3_data)
     );
 
-    // ==========================================
+    // =========================================================================
     // EX Stage
-    // ==========================================
+    // =========================================================================
     wire [63:0] ex_alu_out, ex_tensor_out;
     wire        cmp_flag, tensor_done;
     wire [5:0]  ex_opcode = ex_instr[31:26];
 
     Execution_Unit alu_inst(
-        .opcode(ex_opcode),
-        .rs1_data(ex_rs1_data),
-        .rs2_data(ex_rs2_data),
-        .alu_out(ex_alu_out),
-        .cmp_flag(cmp_flag)
+        .opcode   (ex_opcode),
+        .rs1_data (ex_rs1_data),
+        .rs2_data (ex_rs2_data),
+        .alu_out  (ex_alu_out),
+        .cmp_flag (cmp_flag)
     );
 
     Tensor_Unit tensor_inst(
-        .clk(clk),
-        .rst(rst),
-        .start(ex_tensor_start),
+        .clk     (clk),
+        .rst     (rst),
+        .start   (ex_tensor_start),
         .rs1_data(ex_rs1_data),
         .rs2_data(ex_rs2_data),
         .rs3_data(ex_rs3_data),
-        .busy(tensor_busy),
-        .done(tensor_done),
-        .acc_out(ex_tensor_out)
+        .busy    (tensor_busy),
+        .done    (tensor_done),
+        .acc_out (ex_tensor_out)
     );
 
-    // Branch resolution
-    assign branch_taken = (ex_opcode == `OP_BRANCH) & cmp_flag;
-    assign branch_target = ex_pc + {{14{ex_imm[17]}}, ex_imm}; // Sign extend 18-bit imm to 32-bit
+    assign branch_taken  = (ex_opcode == `OP_BRANCH) & cmp_flag;
+    assign branch_target = ex_pc + {{14{ex_imm[17]}}, ex_imm};
 
-    // Select EX stage result (ALU, Tensor, or calculate Memory Address)
-    // NOTE: Your multiplexer logic here is already perfectly correct!
-    wire [63:0] ex_result = (ex_opcode == `OP_BF_MAC) ? ex_tensor_out : 
-							(ex_opcode == `OP_LD64 || ex_opcode == `OP_ST64) ? (ex_rs1_data + {{46{ex_imm[17]}}, ex_imm}) : 
-							(ex_opcode == `OP_LDI) ? {{46{ex_imm[17]}}, ex_imm} :
-							(ex_opcode == `OP_READ_TID) ? ex_rs1_data :
-							ex_alu_out;
+    wire [63:0] ex_result =
+        (ex_opcode == `OP_BF_MAC)                              ? ex_tensor_out :
+        (ex_opcode == `OP_LD64 || ex_opcode == `OP_ST64)      ? (ex_rs1_data + {{46{ex_imm[17]}}, ex_imm}) :
+        (ex_opcode == `OP_LDI)                                 ? {{46{ex_imm[17]}}, ex_imm} :
+        (ex_opcode == `OP_READ_TID)                            ? ex_rs1_data :
+                                                                  ex_alu_out;
 
-    // ==========================================
+    // =========================================================================
     // EX/MEM Pipeline Register
-    // ==========================================
+    // =========================================================================
     wire [63:0] mem_alu_result, mem_rs2_data;
-    wire mem_we_mem;
-    wire [5:0] mem_opcode;
+    wire        mem_we_mem;
+    wire [5:0]  mem_opcode;
 
     Pipeline_Reg #(140) ex_mem_reg(
-        .clk(clk),
-        .rst(rst),
+        .clk  (clk),
+        .rst  (rst),
         .stall(1'b0),
         .flush(1'b0),
-        .d({ex_result, ex_rs2_data, ex_rd_addr, ex_we_reg, ex_we_mem, ex_opcode}),
-        .q({mem_alu_result, mem_rs2_data, mem_rd_addr, mem_we_reg, mem_we_mem, mem_opcode})
+        .d    ({ex_result, ex_rs2_data, ex_rd_addr, ex_we_reg, ex_we_mem, ex_opcode}),
+        .q    ({mem_alu_result, mem_rs2_data, mem_rd_addr, mem_we_reg, mem_we_mem, mem_opcode})
     );
 
-    // ==========================================
+    // =========================================================================
     // MEM Stage
-    // ==========================================
+    // =========================================================================
     wire [63:0] mem_read_data;
 
+    // ── DMEM: synchronous read (1-cycle latency absorbed by MEM→WB reg)
+    //         prog_mode drives addr from prog_addr for software readback
     Data_Memory dmem_inst(
-        .clk(clk),
-        .we(mem_we_mem),
-        .addr(mem_alu_result[31:0]), // Computed address from EX stage
-        .write_data(mem_rs2_data),
-        .read_data(mem_read_data)
+        .clk          (clk),
+        .prog_mode    (dmem_prog),
+        .prog_we      (prog_we),
+        .prog_addr    (prog_addr),
+        .prog_wdata_lo(prog_wdata_lo),
+        .prog_wdata_hi(prog_wdata_hi),
+        .we           (mem_we_mem),
+        .addr         (mem_alu_result[31:0]),
+        .write_data   (mem_rs2_data),
+        .read_data    (mem_read_data)
     );
 
-    // ==========================================
+    // =========================================================================
     // MEM/WB Pipeline Register
-    // ==========================================
+    // =========================================================================
     wire [63:0] wb_alu_result, wb_mem_read_data;
-    wire [5:0] wb_opcode;
+    wire [5:0]  wb_opcode;
 
     Pipeline_Reg #(139) mem_wb_reg(
-        .clk(clk),
-        .rst(rst),
+        .clk  (clk),
+        .rst  (rst),
         .stall(1'b0),
         .flush(1'b0),
-        .d({mem_read_data, mem_alu_result, mem_rd_addr, mem_we_reg, mem_opcode}),
-        .q({wb_mem_read_data, wb_alu_result, wb_rd_addr, wb_we_reg, wb_opcode})
+        .d    ({mem_read_data, mem_alu_result, mem_rd_addr, mem_we_reg, mem_opcode}),
+        .q    ({wb_mem_read_data, wb_alu_result, wb_rd_addr, wb_we_reg, wb_opcode})
     );
 
-    // ==========================================
+    // =========================================================================
     // WB Stage
-    // ==========================================
-    assign wb_data = (wb_opcode == `OP_LD64) ? wb_mem_read_data : wb_alu_result;
-	
-	assign gpu_result = wb_data;
+    // =========================================================================
+    assign wb_data   = (wb_opcode == `OP_LD64) ? wb_mem_read_data : wb_alu_result;
+    assign gpu_result = wb_data;
+
+    localparam [31:0] PROG_END = 32'h00000018; // byte addr of first NOP after program
+
+    reg gpu_done_reg;
+    always @(posedge clk) begin
+        if (rst || prog_en)
+            gpu_done_reg <= 1'b0;          // clear during reset or programming
+        else
+            gpu_done_reg <= (if_pc >= PROG_END);
+    end
+
+    assign gpu_done = gpu_done_reg;
 
 endmodule
