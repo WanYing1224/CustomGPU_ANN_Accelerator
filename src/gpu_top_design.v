@@ -244,7 +244,7 @@ module gpu_top_design(
     // WB Stage
     // =========================================================================
     assign wb_data   = (wb_opcode == `OP_LD64) ? wb_mem_read_data : wb_alu_result;
-    assign gpu_result = wb_data;
+    assign gpu_result = dmem_prog ? mem_read_data : wb_data;
 
     localparam [31:0] PROG_END = 32'h00000018; // byte addr of first NOP after program
 

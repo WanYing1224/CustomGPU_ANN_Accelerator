@@ -30,6 +30,12 @@ module Data_Memory #(
     end
 */
 
+    integer k;
+    initial begin
+        for (k = 0; k < MEM_DEPTH; k = k + 1)
+            ram[k] = 64'h0000000000000000;
+    end
+
     // ── Address Decoding ─────────────────────────────────────────────────
     // DMEM is 64-bit (8-byte) aligned:  word index = byte_addr >> 3
     wire [9:0] cpu_word_addr  = addr[12:3];
