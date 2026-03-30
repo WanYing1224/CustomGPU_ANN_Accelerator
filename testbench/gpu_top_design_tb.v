@@ -2,21 +2,9 @@
 
 // =============================================================================
 // gpu_top_tb.v — Custom GPU ANN Accelerator Testbench
-//
-// The memory modules (Instruction_Memory, Data_Memory) do NOT use $readmemh.
-// They zero-initialise and rely entirely on the prog interface to be loaded.
-//
-// This testbench:
-//   1. Uses $readmemh to load gpu_program.hex and data_memory.hex into
-//      LOCAL TESTBENCH ARRAYS (not into the hardware modules).
-//   2. Drives those values through the prog interface tasks, exactly
-//      replicating what gpu_test.sh does over PCI on real hardware.
-//
-// Expected result: 0x4060406040604060
-//   BFloat16 FMA: (2.0 × 1.5) + 0.5 = 3.5 = 0x4060 per lane
 // =============================================================================
 
-module gpu_top_tb;
+module gpu_top_design_tb;
 
     // =========================================================================
     // CLOCK
@@ -56,18 +44,17 @@ module gpu_top_tb;
     );
 
     // =========================================================================
-    // LOCAL TESTBENCH ARRAYS
-    // $readmemh loads the hex files into these arrays ONLY.
-    // The hardware modules never see $readmemh.
+    // LOCAL ARRAYS — $readmemh loads files into testbench-only arrays.
+    // The prog interface tasks then write each word into the hardware BRAMs,
+    // exactly replicating what gpu_test.sh does over PCI on the NetFPGA.
     // =========================================================================
-    reg [31:0] imem_data [0:1023];   // 32-bit instruction words
-    reg [63:0] dmem_data [0:1023];   // 64-bit data words
+    reg [31:0] imem_data [0:1023];
+    reg [63:0] dmem_data [0:1023];
 
     // =========================================================================
-    // HELPER TASKS — mirrors PCI register writes in gpu_test.sh
+    // HELPER TASKS
     // =========================================================================
 
-    // Write one 32-bit instruction to IMEM
     task imem_write;
         input [31:0] baddr;
         input [31:0] word;
@@ -83,7 +70,6 @@ module gpu_top_tb;
         end
     endtask
 
-    // Write one 64-bit word to DMEM (lo + hi split, mirrors 32-bit PCI bus)
     task dmem_write;
         input [31:0] baddr;
         input [31:0] lo;
@@ -101,8 +87,7 @@ module gpu_top_tb;
         end
     endtask
 
-    // Read one 64-bit word from DMEM (2-clock BRAM latency)
-    // gpu_result is muxed to show mem_read_data when dmem_prog=1
+    // Synchronous DMEM read via prog interface (1-cycle BRAM latency)
     task dmem_read;
         input  [31:0] baddr;
         output [63:0] data_out;
@@ -144,16 +129,13 @@ module gpu_top_tb;
         repeat(4) @(posedge clk);
 
         // ── Load hex files into LOCAL arrays ─────────────────────────────
-        // $readmemh is only in the TESTBENCH, not in the hardware modules.
-        // The prog interface tasks below then write these values into the
-        // actual hardware BRAMs — same as gpu_test.sh does over PCI.
         $readmemh("C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/src/gpu_program.hex", imem_data);
         $readmemh("C:/USC CE/EE533/Lab7/CustomGPU_ANN_Accelerator/src/data_memory.hex", dmem_data);
         $display("[TB]     Files read: gpu_program.hex, data_memory.hex");
 
         // ── [2] Load IMEM via prog interface ─────────────────────────────
         $display("[TB]");
-        $display("[TB] [2] Loading IMEM (6 instructions via prog interface)...");
+        $display("[TB] [2] Loading IMEM (6 instructions)...");
         for (i = 0; i < 6; i = i + 1) begin
             imem_write(i * 4, imem_data[i]);
             $display("[TB]     IMEM[%0d] addr=0x%03h  data=0x%08h", i, i*4, imem_data[i]);
@@ -162,7 +144,7 @@ module gpu_top_tb;
 
         // ── [3] Load DMEM via prog interface ─────────────────────────────
         $display("[TB]");
-        $display("[TB] [3] Loading DMEM (3 entries via prog interface)...");
+        $display("[TB] [3] Loading DMEM (3 entries)...");
         for (i = 0; i < 3; i = i + 1) begin
             dmem_write(i * 8, dmem_data[i][31:0], dmem_data[i][63:32]);
             $display("[TB]     DMEM[%0d] addr=0x%03h  data=0x%016h", i, i*8, dmem_data[i]);
@@ -195,7 +177,7 @@ module gpu_top_tb;
 
         // ── [7] Poll gpu_done ─────────────────────────────────────────────
         $display("[TB]");
-        $display("[TB] [7] Polling gpu_done (asserts when PC >= 0x18)...");
+        $display("[TB] [7] Polling gpu_done (PC >= 0x18)...");
         timeout_count = 0;
         while (gpu_done !== 1'b1) begin
             @(posedge clk);
@@ -205,8 +187,6 @@ module gpu_top_tb;
                          timeout_count, debug_pc[7:0], gpu_done);
             if (timeout_count >= 5000) begin
                 $display("[TB] ERROR: Timeout — gpu_done never asserted.");
-                $display("[TB]   Last PC    = 0x%08h", debug_pc);
-                $display("[TB]   gpu_result = 0x%016h", gpu_result);
                 $finish;
             end
         end
@@ -214,6 +194,9 @@ module gpu_top_tb;
                  timeout_count, debug_pc[7:0]);
 
         // ── [8] Read GPU result ───────────────────────────────────────────
+        // Wait a few cycles for the pipeline to finish draining cleanly.
+        // gpu_result_reg is already latched when BF_MAC hit WB, so this
+        // is just for waveform clarity — the value is stable immediately.
         repeat(3) @(posedge clk); #1;
 
         $display("[TB]");
@@ -222,7 +205,7 @@ module gpu_top_tb;
         $display("[TB]  Expected:     0x4060406040604060");
         $display("[TB]  (2.0 * 1.5) + 0.5 = 3.5 = 0x4060 per lane");
         if (gpu_result === 64'h4060406040604060) begin
-            $display("[TB]  *** SUCCESS ***");
+            $display("[TB]  *** SUCCESS — Correct BFloat16 FMA result! ***");
         end else begin
             $display("[TB]  *** MISMATCH ***");
             $display("[TB]  Lane 3 [63:48] = 0x%04h  (exp 0x4060)", gpu_result[63:48]);
@@ -233,17 +216,29 @@ module gpu_top_tb;
         $display("[TB] ============================================");
 
         // ── [9] Verify ST64 wrote result to DMEM ─────────────────────────
+        // ST64 stores the BF_MAC result to DMEM[thread_id=0] = address 0x000.
+        // We must wait for ST64 to fully drain through MEM stage before
+        // entering prog_mode — otherwise prog_mode blocks the CPU write path.
+        //
+        // Worst case: ST64 is still in ID when gpu_done fires (~cycle 11).
+        // It needs 3 more clocks to reach MEM stage.
+        // We already waited 3 clocks above after gpu_done.
+        // Add 10 more to be safe before asserting prog_mode.
         $display("[TB]");
-        $display("[TB] [9] Reading DMEM[0] (ST64 result)...");
-        @(posedge clk); #1;
+        $display("[TB] [9] Waiting for ST64 to drain through MEM stage...");
+        repeat(10) @(posedge clk);
+
+        $display("[TB]     Reading DMEM[0] (ST64 stored result to Mem[thread_id+0])...");
         prog_en  = 1;
         dmem_sel = 1;
         prog_we  = 0;
         dmem_read(32'h0, readback);
         $display("[TB]     DMEM[0] = 0x%016h  %s",
                  readback,
-                 (readback === 64'h4060406040604060) ? "OK" : "MISMATCH");
+                 (readback === 64'h4060406040604060) ? "OK — ST64 wrote correctly" :
+                                                       "MISMATCH — check ST64 path");
 
+        $display("[TB]");
         $display("[TB] Simulation complete.");
         #100;
         $finish;
@@ -257,8 +252,8 @@ module gpu_top_tb;
     always @(posedge clk) sim_cycle <= sim_cycle + 1;
 
     initial begin
-        $dumpfile("gpu_top_tb.vcd");
-        $dumpvars(0, gpu_top_tb);
+        $dumpfile("gpu_top_design_tb.vcd");
+        $dumpvars(0, gpu_top_design_tb);
     end
 
 endmodule

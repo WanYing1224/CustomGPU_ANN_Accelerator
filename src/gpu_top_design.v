@@ -1,18 +1,5 @@
 `include "isa_defines.vh"
 
-// =============================================================================
-// gpu_top_design.v — GPU top with PCI programming interface
-//
-// Key differences from the original working gpu_top.v:
-//   1. Added prog interface (prog_en, dmem_sel, prog_we, prog_addr, wdata_lo/hi)
-//   2. DMEM async read PRESERVED — critical for correct MEM→WB pipeline timing
-//   3. DMEM sync read added separately for prog readback only (prog_read_data)
-//   4. ST64 store data fixed: rs3 port reads the Rd field so the FMA result
-//      (R5) is correctly stored, not R0
-//   5. gpu_done registered signal added (PC >= PROG_END)
-//   6. gpu_result muxed: shows prog_read_data during prog_mode, wb_data otherwise
-// =============================================================================
-
 module gpu_top_design(
     input  wire        clk,
     input  wire        rst,
@@ -97,16 +84,10 @@ module gpu_top_design(
     wire        ex_we_reg,  mem_we_reg,  wb_we_reg;
     wire [63:0] wb_data;
 
-    // ── ST64 store-data fix ──────────────────────────────────────────────
-    // The ISA defines ST64 as: Mem[Rs1 + Imm] <- Rd
-    // The Rd field [25:22] holds the register whose VALUE is to be stored.
-    // We route rs3_addr to the Rd field so id_rs3_data carries that value.
-    // For all other instructions rs3 still reads instr[13:10] as before —
-    // but the Control_Unit only raises hazard_rs3 for instr[13:10], which
-    // is fine because the ST64 source (Rd) goes through the same WB path.
-    // ─────────────────────────────────────────────────────────────────────
+    // ── ST64 store-data and hazard fix ────────────────────────────────────
+    // ISA: ST64  Mem[Rs1 + Imm] <- Rd
     wire [3:0] rs3_read_addr = (id_instr[31:26] == `OP_ST64)
-                                ? id_instr[25:22]   // ST64: read Rd as store data
+                                ? id_instr[25:22]   // ST64: Rd is the store source
                                 : id_instr[13:10];  // all others: normal rs3
 
     Register_File rf_inst (
@@ -114,7 +95,7 @@ module gpu_top_design(
         .we        (wb_we_reg),
         .rs1_addr  (id_instr[21:18]),
         .rs2_addr  (id_instr[17:14]),
-        .rs3_addr  (rs3_read_addr),     // ← fixed: Rd field for ST64
+        .rs3_addr  (rs3_read_addr),      // remapped for ST64
         .rd_addr   (wb_rd_addr),
         .write_data(wb_data),
         .rs1_data  (id_rs1_data),
@@ -122,6 +103,8 @@ module gpu_top_design(
         .rs3_data  (id_rs3_data)
     );
 
+    // Pass the EFFECTIVE rs3 address (after ST64 remapping) to the Control
+    // Unit so that hazard_rs3 checks the right register (R5 for ST64, not R0).
     Control_Unit ctrl_inst(
         .instr_id    (id_instr),
         .tensor_busy (tensor_busy),
@@ -135,7 +118,9 @@ module gpu_top_design(
         .flush_execute(flush_execute),
         .reg_write_en(id_we_reg),
         .mem_write_en(id_we_mem),
-        .tensor_start(id_tensor_start)
+        .tensor_start(id_tensor_start),
+        // Pass the remapped rs3 addr so hazard_rs3 checks R5 for ST64
+        .rs3_override(rs3_read_addr)
     );
 
     wire [63:0] id_fwd_rs1 = (id_instr[31:26] == `OP_READ_TID) ?
@@ -160,7 +145,6 @@ module gpu_top_design(
                 ex_rd_addr, ex_we_reg, ex_we_mem, ex_tensor_start})
     );
 
-    // rs3 (store data for ST64) carried through its own pipeline register
     Pipeline_Reg #(64) id_ex_rs3_reg(
         .clk  (clk),
         .rst  (rst),
@@ -209,16 +193,12 @@ module gpu_top_design(
 
     // =========================================================================
     // EX/MEM Pipeline Register
-    // ── ST64 store-data fix: pass ex_rs3_data (the Rd value) instead of
-    //    ex_rs2_data so the FMA result (R5) reaches the DMEM write port.
+    // ST64 store data = ex_rs3_data (carries R5 via the remapped rs3 port)
     // =========================================================================
     wire [63:0] mem_alu_result, mem_store_data;
     wire        mem_we_mem;
     wire [5:0]  mem_opcode;
 
-    // Select which data to forward as store data:
-    //   ST64 → ex_rs3_data (holds the Rd register value = R5 = FMA result)
-    //   others → ex_rs2_data (normal second operand, unused for stores)
     wire [63:0] ex_store_data = (ex_opcode == `OP_ST64) ? ex_rs3_data : ex_rs2_data;
 
     Pipeline_Reg #(140) ex_mem_reg(
@@ -231,25 +211,23 @@ module gpu_top_design(
     );
 
     // =========================================================================
-    // MEM Stage
-    // ── ASYNC read preserved — identical to hw_module/Data_Memory.v
-    // ── This is the key fix: sync read broke MEM→WB latency
+    // MEM Stage — async CPU read preserved (matches working hw_module design)
     // =========================================================================
     wire [63:0] mem_read_data;
-    wire [63:0] dmem_prog_read_data;  // sync read for prog readback only
+    wire [63:0] dmem_prog_read_data;
 
     Data_Memory dmem_inst(
-        .clk          (clk),
-        .prog_mode    (dmem_prog),
-        .prog_we      (prog_we),
-        .prog_addr    (prog_addr),
-        .prog_wdata_lo(prog_wdata_lo),
-        .prog_wdata_hi(prog_wdata_hi),
-        .we           (mem_we_mem),
-        .addr         (mem_alu_result[31:0]),
-        .write_data   (mem_store_data),   // ← carries R5 for ST64
-        .read_data    (mem_read_data),         // async → CPU pipeline
-        .prog_read_data(dmem_prog_read_data)   // sync  → prog readback
+        .clk           (clk),
+        .prog_mode     (dmem_prog),
+        .prog_we       (prog_we),
+        .prog_addr     (prog_addr),
+        .prog_wdata_lo (prog_wdata_lo),
+        .prog_wdata_hi (prog_wdata_hi),
+        .we            (mem_we_mem),
+        .addr          (mem_alu_result[31:0]),
+        .write_data    (mem_store_data),
+        .read_data     (mem_read_data),
+        .prog_read_data(dmem_prog_read_data)
     );
 
     // =========================================================================
@@ -273,14 +251,21 @@ module gpu_top_design(
     assign wb_data = (wb_opcode == `OP_LD64) ? wb_mem_read_data : wb_alu_result;
 
     // =========================================================================
-    // GPU RESULT OUTPUT
-    // During prog_mode: show dmem_prog_read_data (sync, for software readback)
-    // During execution: show wb_data (WB stage result)
+    // GPU RESULT REGISTER
     // =========================================================================
-    assign gpu_result = dmem_prog ? dmem_prog_read_data : wb_data;
+    reg [63:0] gpu_result_reg;
+
+    always @(posedge clk) begin
+        if (rst)
+            gpu_result_reg <= 64'd0;
+        else if (wb_opcode == `OP_BF_MAC && wb_we_reg)
+            gpu_result_reg <= wb_data;
+    end
+
+    assign gpu_result = dmem_prog ? dmem_prog_read_data : gpu_result_reg;
 
     // =========================================================================
-    // GPU DONE — registered, asserts when PC >= PROG_END
+    // GPU DONE
     // =========================================================================
     localparam [31:0] PROG_END = 32'h00000018;
 
