@@ -4,32 +4,28 @@ module Data_Memory #(
     input  wire        clk,
 
     // ── PCI Programming Interface ─────────────────────────────────────────
-    // prog_mode = 1: software drives addr/data, write enabled by prog_we
-    // The PCI bus is 32-bit. Two registers (wdata_lo + wdata_hi) are assembled
-    // into one 64-bit word and written together on the prog_we pulse.
-    input  wire        prog_mode,      // HIGH during software loading
-    input  wire        prog_we,        // Write strobe (synchronous, 1-cycle pulse)
-    input  wire [31:0] prog_addr,      // Byte address from software
-    input  wire [31:0] prog_wdata_lo,  // Lower 32 bits of 64-bit DMEM word
-    input  wire [31:0] prog_wdata_hi,  // Upper 32 bits of 64-bit DMEM word
+    input  wire        prog_mode,
+    input  wire        prog_we,
+    input  wire [31:0] prog_addr,
+    input  wire [31:0] prog_wdata_lo,
+    input  wire [31:0] prog_wdata_hi,
 
     // ── CPU Data Interface ────────────────────────────────────────────────
-    input  wire        we,             // Write enable from pipeline (ST64)
-    input  wire [31:0] addr,           // Computed address (Base + Offset) from EX stage
-    input  wire [63:0] write_data,     // Store data from pipeline (ST64)
+    input  wire        we,
+    input  wire [31:0] addr,
+    input  wire [63:0] write_data,
 
-    output reg  [63:0] read_data       // Load data to pipeline (LD64), 1-cycle latency
+    // ── Read Outputs ─────────────────────────────────────────────────────
+    output wire [63:0] read_data,       // Async — zero latency for CPU pipeline (LD64)
+    output reg  [63:0] prog_read_data   // Sync  — 1-cycle latency for prog readback only
 );
 
-    // 64-bit wide RAM — each entry is one 64-bit vector lane
     reg [63:0] ram [0:MEM_DEPTH-1];
 
-/*
-    initial begin
-        $readmemh("data_memory.hex", ram);
-    end
-*/
-
+    // -------------------------------------------------------------------------
+    // Zero-initialise so simulation starts with known values (not 'x').
+    // Data is loaded at runtime via the prog interface.
+    // -------------------------------------------------------------------------
     integer k;
     initial begin
         for (k = 0; k < MEM_DEPTH; k = k + 1)
@@ -37,14 +33,13 @@ module Data_Memory #(
     end
 
     // ── Address Decoding ─────────────────────────────────────────────────
-    // DMEM is 64-bit (8-byte) aligned:  word index = byte_addr >> 3
     wire [9:0] cpu_word_addr  = addr[12:3];
     wire [9:0] prog_word_addr = prog_addr[12:3];
 
     // ── Synchronous Write ────────────────────────────────────────────────
     // Two write sources:
-    //   1. PCI programming (prog_mode=1): assembles 64-bit word from lo+hi regs
-    //   2. CPU pipeline (prog_mode=0, we=1): normal ST64 store
+    //   prog_mode=1: PCI programming — assembles 64-bit word from lo+hi regs
+    //   prog_mode=0: CPU pipeline    — normal ST64 store
     always @(posedge clk) begin
         if (prog_mode && prog_we)
             ram[prog_word_addr] <= {prog_wdata_hi, prog_wdata_lo};
@@ -52,12 +47,12 @@ module Data_Memory #(
             ram[cpu_word_addr]  <= write_data;
     end
 
-    // ── Synchronous Read (1-cycle latency) ───────────────────────────────
+    // ── Asynchronous Read for CPU pipeline ───────────────────────────────
+    assign read_data = ram[cpu_word_addr];
+
+    // ── Synchronous Read for prog readback only ───────────────────────────
     always @(posedge clk) begin
-        if (prog_mode)
-            read_data <= ram[prog_word_addr];
-        else
-            read_data <= ram[cpu_word_addr];
+        prog_read_data <= ram[prog_word_addr];
     end
 
 endmodule
