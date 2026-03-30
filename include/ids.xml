@@ -1,31 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<nf:module xmlns:nf="http://www.NetFPGA.org/NF2_register_system" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.NetFPGA.org/NF2_register_system NF2_register_system.xsd ">
+<nf:module xmlns:nf="http://www.NetFPGA.org/NF2_register_system"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.NetFPGA.org/NF2_register_system NF2_register_system.xsd">
   <nf:name>ids</nf:name>
   <nf:prefix>gpu</nf:prefix>
   <nf:location>udp</nf:location>
   <nf:description>Registers for Custom GPU ANN Accelerator</nf:description>
   <nf:blocksize>64</nf:blocksize>
   <nf:registers>
+
+    <!-- ── Software Registers (host writes, GPU reads) ────────────────── -->
+
+    <!-- SW[0]  0x2000300
+         bit[0] = reset    : 1 = hold GPU in reset
+         bit[1] = prog_en  : 1 = software owns IMEM/DMEM address buses
+         bit[2] = dmem_sel : 1 = target DMEM,  0 = target IMEM
+         bit[3] = prog_we  : write strobe (pulse 1→0 to commit one word)
+
+         CMD quick reference:
+           0x0  GPU running
+           0x2  IMEM prog idle    (prog_en=1, dmem_sel=0, prog_we=0)
+           0xA  IMEM write pulse  (prog_en=1, dmem_sel=0, prog_we=1, reset=0)
+           0x6  DMEM prog idle    (prog_en=1, dmem_sel=1, prog_we=0)
+           0xE  DMEM write pulse  (prog_en=1, dmem_sel=1, prog_we=1)
+    -->
     <nf:register>
       <nf:name>gpu_cmd</nf:name>
-      <nf:description>GPU Command Register (Bit 0 = Reset)</nf:description>
+      <nf:description>GPU Command: bit[0]=reset, bit[1]=prog_en, bit[2]=dmem_sel, bit[3]=prog_we</nf:description>
       <nf:type>generic_software32</nf:type>
     </nf:register>
+
+    <!-- SW[1]  0x2000304 -->
     <nf:register>
       <nf:name>host_thread_id</nf:name>
-      <nf:description>Host Thread ID for GPU</nf:description>
+      <nf:description>Host Thread ID supplied to the GPU READ_TID instruction</nf:description>
       <nf:type>generic_software32</nf:type>
     </nf:register>
-    
+
+    <!-- SW[2]  0x2000308
+         Byte address for IMEM or DMEM access.
+         IMEM: word-addressed via addr[11:2]  (32-bit words)
+         DMEM: word-addressed via addr[11:3]  (64-bit words) -->
+    <nf:register>
+      <nf:name>prog_addr</nf:name>
+      <nf:description>Byte address for IMEM/DMEM programming read/write</nf:description>
+      <nf:type>generic_software32</nf:type>
+    </nf:register>
+
+    <!-- SW[3]  0x200030c  Lower 32 bits of a 64-bit DMEM word (or 32-bit IMEM word) -->
+    <nf:register>
+      <nf:name>prog_wdata_lo</nf:name>
+      <nf:description>Write data [31:0] — used for both IMEM (32-bit) and lower half of DMEM (64-bit)</nf:description>
+      <nf:type>generic_software32</nf:type>
+    </nf:register>
+
+    <!-- SW[4]  0x2000310  Upper 32 bits of a 64-bit DMEM word (unused for IMEM writes) -->
+    <nf:register>
+      <nf:name>prog_wdata_hi</nf:name>
+      <nf:description>Write data [63:32] — upper half of DMEM 64-bit word (ignored for IMEM writes)</nf:description>
+      <nf:type>generic_software32</nf:type>
+    </nf:register>
+
+    <!-- ── Hardware Registers (GPU writes, host reads) ────────────────── -->
+
+    <!-- HW[0]  0x2000314 -->
     <nf:register>
       <nf:name>gpu_result_low</nf:name>
-      <nf:description>Lower 32 bits of GPU Result</nf:description>
+      <nf:description>GPU computation result bits [31:0]</nf:description>
       <nf:type>generic_hardware32</nf:type>
     </nf:register>
+
+    <!-- HW[1]  0x2000318 -->
     <nf:register>
       <nf:name>gpu_result_high</nf:name>
-      <nf:description>Upper 32 bits of GPU Result</nf:description>
+      <nf:description>GPU computation result bits [63:32]</nf:description>
       <nf:type>generic_hardware32</nf:type>
     </nf:register>
+
+    <!-- HW[2]  0x200031c
+         bit[31]  = gpu_done : registered flag, HIGH when PC >= program end
+         bit[7:0] = current PC value -->
+    <nf:register>
+      <nf:name>gpu_pc</nf:name>
+      <nf:description>bit[31]=gpu_done (registered), bit[7:0]=current program counter</nf:description>
+      <nf:type>generic_hardware32</nf:type>
+    </nf:register>
+
   </nf:registers>
 </nf:module>
