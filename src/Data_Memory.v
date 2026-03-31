@@ -22,24 +22,11 @@ module Data_Memory #(
 
     reg [63:0] ram [0:MEM_DEPTH-1];
 
-    // -------------------------------------------------------------------------
-    // Zero-initialise so simulation starts with known values (not 'x').
-    // Data is loaded at runtime via the prog interface.
-    // -------------------------------------------------------------------------
-    integer k;
-    initial begin
-        for (k = 0; k < MEM_DEPTH; k = k + 1)
-            ram[k] = 64'h0000000000000000;
-    end
-
     // ── Address Decoding ─────────────────────────────────────────────────
     wire [9:0] cpu_word_addr  = addr[12:3];
     wire [9:0] prog_word_addr = prog_addr[12:3];
 
     // ── Synchronous Write ────────────────────────────────────────────────
-    // Two write sources:
-    //   prog_mode=1: PCI programming — assembles 64-bit word from lo+hi regs
-    //   prog_mode=0: CPU pipeline    — normal ST64 store
     always @(posedge clk) begin
         if (prog_mode && prog_we)
             ram[prog_word_addr] <= {prog_wdata_hi, prog_wdata_lo};
